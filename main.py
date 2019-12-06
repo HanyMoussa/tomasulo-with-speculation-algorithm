@@ -20,7 +20,6 @@ RS['JMP'] = myJMPList
 RS['SW'] = mySWList
 RS['LW'] = myLWList
 RS['ADD'] = myADDList
-RS['ADD'][0][1] = 'Y'
 
 
 dataMemory = [0] * 65536
@@ -28,14 +27,14 @@ dataMemory = [0] * 65536
 RF = {}
 
 #R2 is a register that is used by ROB1 and has the value of 25
-RF['R0'] = [0,0]
-RF['R1'] = [0,1]
-RF['R2'] = [0,2]
-RF['R3'] = [0,3]
-RF['R4'] = [0,4]
-RF['R5'] = [0,5]
-RF['R6'] = [0,6]
-RF['R7'] = [0,7]
+RF['R0'] = [-1,0]
+RF['R1'] = [-1,1]
+RF['R2'] = [-1,2]
+RF['R3'] = [-1,3]
+RF['R4'] = [-1,4]
+RF['R5'] = [-1,5]
+RF['R6'] = [-1,6]
+RF['R7'] = [-1,7]
 
 ROB = {}
 ROB[0] = {'Type': 'LD', 'DEST':0, 'Value': 25, 'Ready': 'N'}
@@ -49,80 +48,164 @@ ROB[7] = {'Type': 'LD', 'DEST':0, 'Value': 25, 'Ready': 'N'}
 usedROB = 0
 
 head = []
-head.append(1)
+head.append(0)
 tail = []
-tail.append(1)
+tail.append(0)
 
-instruction = ['ADD', 'R2', 'R2', 'R3']
-instructions = [instruction.copy() for i in range(5)]
+instructions = []
 
 pc = 0
 cycle = 0
 
 
 
-def fillRS(rs, instruction):
-    if(instruction[0] == 'ADD'):
+def fillRS(rs, instruction, instructionType):        
+        
+    if((instructionType == 'ADD') or (instructionType == 'NAND') or (instructionType == 'MULT')):
         rs['BUSY'] = 'Y'
         rs['op'] = instruction[0]
-        ROB[tail[0]]['Type'] = instruction[0]
+        ROB[tail[0]]['Type'] = instructionType
         ROB[tail[0]]['DEST'] = instruction[1]
         ROB[tail[0]]['Ready'] = 'N'
-        RF[instruction[1]][0] = tail
-        
-        tail[0] = (tail[0] + 1)%8
         
         rs['DEST'] = RF[instruction[1]][0]
-        if(RF[instruction[2]] == 0):
+        if(RF[instruction[2]][0] == 0):
             rs['Vj'] = RF[instruction[2]][1]
-            rs['Qj'] = 0
+            rs['Qj'] = -1
         
         else:
             rs['Vj'] = 0
             rs['Qj'] = RF[instruction[2]][0]
         
         
-        if(RF[instruction[3]] == 0):
+        if(RF[instruction[3]][0] == 0):
             rs['Vk'] = RF[instruction[3]][1]
-            rs['Qk'] = 0
+            rs['Qk'] = -1
         
         else:
             rs['Vk'] = 0
             rs['Qk'] = RF[instruction[3]][0]
+            
+        RF[instruction[1]][0] = tail[0]
+        tail[0] = (tail[0] + 1) % 8
         
-while pc<4:
-    instruction1 = instructions[pc]
+        
+    elif((instructionType == 'LW') or (instructionType == 'SW') or (instructionType == 'BEQ') ):
+        rs['BUSY'] = 'Y'
+        rs['op'] = instruction[0]
+        rs['A'] = instruction[3]    # the immediate value
+        ROB[tail[0]]['Type'] = instructionType
+        ROB[tail[0]]['DEST'] = instruction[1]
+        ROB[tail[0]]['Ready'] = 'N'
+        
+        
+        rs['DEST'] = RF[instruction[1]][0]
+        if(RF[instruction[2]][0] == 0):
+            rs['Vj'] = RF[instruction[2]][1]
+            rs['Qj'] = -1
+        
+        else:
+            rs['Vj'] = 0
+            rs['Qj'] = RF[instruction[2]][0]
+            
+        RF[instruction[1]][0] = tail[0]
+        tail[0] = (tail[0] + 1) % 8
     
+    elif(instructionType == 'JMP'):
+        rs['BUSY'] = 'Y'
+        rs['op'] = instruction[0]
+        rs['A'] = instruction[1]    # the immediate value
+        ROB[tail[0]]['Type'] = instructionType
+        ROB[tail[0]]['DEST'] = instruction[1]
+        ROB[tail[0]]['Ready'] = 'N'
+            
+        RF[instruction[1]][0] = tail[0]
+        tail[0] = (tail[0] + 1) % 8
+    
+
+    #TODO: JALR and RET
+    
+
+
+def decodeInstructionType(instruction):
+    # if it is arithmetic
+    if((instruction[0] =='ADD' ) or (instruction[0] == 'SUB') or (instruction[0] == 'ADDI')):
+        return 'ADD'
+    
+    # if it is a branch
+    if((instruction[0] =='JMP') or (instruction[0] == 'JALR') or (instruction[0] =='RET')):
+        return 'JMP'
+    
+    # if it is anything else
+    else:
+        return instruction[0]
+
+# a function that takes a file name and reads the instruction in it and puts them in a list
+def readInstructionsFromFile(instructions, fileName):
+    f = open(fileName, "r+")
+    for line in f:
+        parts = line.split()
+        if(len(parts) == 4):
+            thisInstruction = []
+            thisInstruction.append(parts[0])
+            thisInstruction.append(parts[1][:-1])
+            thisInstruction.append(parts[2][:-1])
+            thisInstruction.append(parts[3])
+            instructions.append(thisInstruction)
+        elif(len(parts) == 2):
+            thisInstruction = []
+            thisInstruction.append(parts[0])
+            thisInstruction.append(parts[1])
+            instructions.append(thisInstruction)
+        else:
+            thisInstruction = []
+            thisInstruction.append(parts[0])
+            instructions.append(thisInstruction)
+            
+    
+    
+ 
+    
+readInstructionsFromFile(instructions, 'instructions.txt')    
+while pc<4:
+    
+    # firstly, handle issuing
+    instruction1 = instructions[pc]
+    instruction1Type = decodeInstructionType(instruction1)
     #to do: if inst1 is a JMP, then fetch inst2 from prediction instead of pc+1
     instruction2 = instructions[pc + 1]
+    instruction2Type = decodeInstructionType(instruction1)
+    
     instruction1Issued = 0
     instruction2Issued = 0
     
     if(usedROB < 8): #we have enough space in ROB
         
         
-        for rs in RS[instruction1[0]]:
+        for rs in RS[instruction1Type]:
             if(rs['BUSY'] == 'N'):
                 instruction1Issued = 1
                 usedROB += 1
-                fillRS(rs, instruction1)
+                fillRS(rs, instruction1, instruction1Type)
                 break
         
         if(usedROB < 8) and instruction1Issued:
             
-            for rs in RS[instruction2[0]]:
+            for rs in RS[instruction2Type]:
                 if(rs['BUSY'] == 'N'):
-#                    fillRS(rs, instruction2)
-                    instruction2Issued
+                    fillRS(rs, instruction2, instruction2Type)
+                    instruction2Issued = 1;
                     usedROB += 1
                     break;
-    
     
     
     if(instruction2Issued):
         pc += 2
     elif(instruction1Issued):
         pc += 1
+        
+    # secondly, handle commiting:
+    
         
     cycle += 1
     print(cycle)

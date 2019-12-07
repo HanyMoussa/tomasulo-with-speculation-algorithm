@@ -378,11 +378,16 @@ def writeUsingBus(result, ROBNumber):
                 rs['Qk'] = - 1
         
 
+
+branchMispredictions = 0
+branchCounter = 0
+instructionCounter = 0
+
 readDataFromFile('datamem.txt')
 stall = []
 stall.append(0)
     
-readInstructionsFromFile(instructions, 'instructions.txt')    
+readInstructionsFromFile(instructions, 'sample.txt')    
 while (usedROB != 0) or (pc < len(instructions)):
     
     if(pc < len(instructions)):
@@ -431,19 +436,8 @@ while (usedROB != 0) or (pc < len(instructions)):
                             else:
                                 pc = pc + 1
                             break
-                    
-    '''if(!stall[0]):
-        if(instruction2Issued):
-            pc += 2
-        elif(instruction1Issued):
-            pc += 1
-     '''   
-    
-      
-    #TODO: set stall = 0 once JMP instruction finishes execution    
-        
-    #TODO: if it is JALR then RET then do not fetch another instruction until this starts execution
-    # use stall flag which becomes 1 whenever we get these instructions and the operands are not ready
+                        
+                        
     # secondly, handle committing:
     
     first = 1
@@ -459,6 +453,7 @@ while (usedROB != 0) or (pc < len(instructions)):
                         RF[firstCommit['Dest']][0] = -1
                         RF[firstCommit['Dest']][1] = firstCommit['Value']
                     usedROB -= 1
+                    RF[firstCommit['Dest']][1] = firstCommit['Value']
                        
                 elif(firstCommit['Type'] == 'SW'):
                    dataMemory[firstCommit['Dest']] = firstCommit['Value']
@@ -487,17 +482,22 @@ while (usedROB != 0) or (pc < len(instructions)):
                         
                 elif(firstCommit['Type'] == 'BEQ'):
                     # Update Value in writing: if we need to flush then Value = 1
+                    branchCounter += 1
                     if(firstCommit['Value'] == 0): # wrong prediction
                        # we need to flush the ROB
                        pc = firstCommit['Dest']
                        clearRF_RS_ROB()
                        tail[0] = (head[0] + 1) % 8
                        usedROB = 0
+                       branchMispredictions += 1
+                       stall[0] = 0
                     else:
                        usedROB -= 1
                            
                 firstCommit['Ready'] = 'N'
                 head[0] = (head[0] + 1) % 8
+                instructionCounter += 1
+                
    
     
     
@@ -573,7 +573,7 @@ while (usedROB != 0) or (pc < len(instructions)):
                     ROB[rs['Dest']]['Ready'] = 'Y'
                     branchPC = ROB[rs['Dest']]['PC']
                     if((rs['Vj'] == rs['Vk'])):
-                        ROB[rs['Dest']]['Dest'] = branchPC + rs['A']
+                        ROB[rs['Dest']]['Dest'] = branchPC + rs['A'] + 1
                     else:
                         ROB[rs['Dest']]['Dest'] = branchPC + 1
                     if((rs['Vj'] == rs['Vk']) and (rs['A'] < 0)) or ((rs['Vj'] != rs['Vk']) and (rs['A'] > 0)):
@@ -596,7 +596,7 @@ while (usedROB != 0) or (pc < len(instructions)):
     #start executing instructions with ready operands
     for key,value in RS.items():
         for rs in value:
-            if(rs['Qj'] == -1) and (rs['Qk'] == -1) and (rs['exec'] < 0):
+            if((rs['Qj'] == -1) and (rs['Qk'] == -1) and (rs['exec'] < 0) and rs['BUSY'] == 'Y'):
                 
                 myType = decodeInstructionType(rs['op'])
                 rs['exec'] = getDelay(myType)
@@ -609,13 +609,16 @@ while (usedROB != 0) or (pc < len(instructions)):
             elif(rs['exec'] != 0):
                 rs['exec'] -= 1
             
-    
-    
     cycle += 1
-    print(cycle)
     
     
-
-        
-        
-        
+# Report the results after commiting all instructions
+print ('Total Clock Cycles = ', cycle)
+print ('Number of Instructions = ', instructionCounter)
+print ('IPC = ', instructionCounter/cycle)
+print ('Branch Instructions = ', branchCounter)
+print ('Branch Mispredictions = ', branchMispredictions)
+if(branchCounter > 0):
+    print ('Branch misprediction rate = ', branchMispredictions/branchCounter)
+else:
+    print ('Branch misprediction rate = ', 0)

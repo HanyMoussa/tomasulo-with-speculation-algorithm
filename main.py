@@ -378,7 +378,20 @@ def writeUsingBus(result, ROBNumber):
                 rs['Qk'] = - 1
         
 
-
+def checkROBstoLW(rs):
+    address = rs['A']
+    myTail = rs['Dest']
+    while(myTail != head[0]):
+        if(ROB[myTail]['Type'] == 'SW') and (ROB[myTail]['Dest'] == address):
+            return 0
+        else:
+            myTail = (myTail - 1) % 8
+            
+    #consider myTail = head
+    if(ROB[myTail]['Type'] == 'SW') and (ROB[myTail]['Dest'] == address):
+        return 0
+    return 1
+        
 branchMispredictions = 0
 branchCounter = 0
 instructionCounter = 0
@@ -621,8 +634,12 @@ while (usedROB != 0) or (pc < len(instructions)):
                 if(rs['op'] == 'SW'):
                     rs['A'] += rs['Vk']
                     
+            elif(rs['exec'] == 2) and (rs['op'] == 'LW'):
+                if(checkROBstoLW(rs)):
+                    rs['exec'] -= 1
             elif(rs['exec'] != 0):
                 rs['exec'] -= 1
+            
             
     cycle += 1
     
@@ -637,3 +654,7 @@ if(branchCounter > 0):
     print ('Branch misprediction rate = ', branchMispredictions/branchCounter)
 else:
     print ('Branch misprediction rate = ', 0)
+    
+
+        
+    

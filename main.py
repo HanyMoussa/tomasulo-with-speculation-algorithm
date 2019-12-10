@@ -508,35 +508,50 @@ while (usedROB != 0) or (pc < len(instructions)):
             if ((rs['exec'] == 0) and (written < 2)):
                 myOp = rs['op']
                 if(myOp == 'ADD') or (myOp == 'ADDI'):
-                    result = rs['Vj'] + rs['Vk']
+                    if(ROB[rs['Dest']]['Dest'] != 'R0'):
+                        result = rs['Vj'] + rs['Vk']
+                    else:
+                        result = 0
                     ROB[rs['Dest']]['Value'] = result
                     ROB[rs['Dest']]['Ready'] = 'Y'
                     written += 1
                     writeUsingBus(result, rs['Dest'])
                 
                 elif(myOp == 'SUB'):
-                    result = rs['Vj'] - rs['Vk']
+                    if(ROB[rs['Dest']]['Dest'] != 'R0'):
+                        result = rs['Vj'] - rs['Vk']
+                    else:
+                        result = 0
                     ROB[rs['Dest']]['Value'] = result
                     ROB[rs['Dest']]['Ready'] = 'Y'
                     written += 1
                     writeUsingBus(result, rs['Dest'])
                     
                 elif(myOp == 'MULT'):
-                    result = rs['Vj'] * rs['Vk']
+                    if(ROB[rs['Dest']]['Dest'] != 'R0'):
+                        result = rs['Vj'] * rs['Vk']
+                    else:
+                        result = 0
                     ROB[rs['Dest']]['Value'] = result
                     ROB[rs['Dest']]['Ready'] = 'Y'
                     written += 1
                     writeUsingBus(result, rs['Dest'])
                     
                 elif(myOp == 'NAND'):
-                    result = not(rs['Vj'] and rs['Vk'])
+                    if(ROB[rs['Dest']]['Dest'] == 'R0'):
+                        result = not(rs['Vj'] and rs['Vk'])
+                    else:
+                        result = 0
                     ROB[rs['Dest']]['Value'] = result
                     ROB[rs['Dest']]['Ready'] = 'Y'
                     written += 1
                     writeUsingBus(result, rs['Dest'])
                 
                 elif(myOp == 'LW'):
-                    result = dataMemory[rs['A']]
+                    if(ROB[rs['Dest']]['Dest'] == 'R0'):
+                        result = dataMemory[rs['A']]
+                    else:
+                        result = 0
                     ROB[rs['Dest']]['Value'] = result
                     ROB[rs['Dest']]['Ready'] = 'Y'
                     written += 1

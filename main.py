@@ -334,36 +334,42 @@ def decodeInstructionType(op):
     # if it is anything else
     else:
         return op
+startingAddress = []
+startingAddress.append(0)
 
 # a function that takes a file name and reads the instruction in it and puts them in a list
 def readInstructionsFromFile(instructions, fileName):
     f = open(fileName, "r+")
     for line in f:
         parts = line.split()
-        if(len(parts) == 4):
-            thisInstruction = []
-            thisInstruction.append(parts[0])
-            thisInstruction.append(parts[1][:-1])
-            thisInstruction.append(parts[2][:-1])
-            
-            if(parts[0] == 'ADDI') or (parts[0] == 'BEQ') or (parts[0] == 'LW') or (parts[0] == 'SW'):
-                thisInstruction.append(int(parts[3]))
-            else:
-                thisInstruction.append((parts[3]))
-            
-            instructions.append(thisInstruction)
-        elif(len(parts) == 2):
-            thisInstruction = []
-            thisInstruction.append(parts[0])
-            if(parts[0] == 'JMP'):
-                thisInstruction.append(int(parts[1]))
-            else:
-                thisInstruction.append((parts[1]))
-            instructions.append(thisInstruction)
+        if((len(parts) == 1) and (parts[0] != 'RET')):
+            startingAddress[0] = int(parts[0])
         else:
-            thisInstruction = []
-            thisInstruction.append(parts[0])
-            instructions.append(thisInstruction)
+            
+            if(len(parts) == 4):
+                thisInstruction = []
+                thisInstruction.append(parts[0])
+                thisInstruction.append(parts[1][:-1])
+                thisInstruction.append(parts[2][:-1])
+                
+                if(parts[0] == 'ADDI') or (parts[0] == 'BEQ') or (parts[0] == 'LW') or (parts[0] == 'SW'):
+                    thisInstruction.append(int(parts[3]))
+                else:
+                    thisInstruction.append((parts[3]))
+                
+                instructions.append(thisInstruction)
+            elif(len(parts) == 2):
+                thisInstruction = []
+                thisInstruction.append(parts[0])
+                if(parts[0] == 'JMP'):
+                    thisInstruction.append(int(parts[1]))
+                else:
+                    thisInstruction.append((parts[1]))
+                instructions.append(thisInstruction)
+            else:
+                thisInstruction = []
+                thisInstruction.append(parts[0])
+                instructions.append(thisInstruction)
             
     
 def writeUsingBus(result, ROBNumber):
@@ -400,7 +406,7 @@ readDataFromFile('datamem.txt')
 stall = []
 stall.append(0)
     
-readInstructionsFromFile(instructions, 'sample.txt')    
+readInstructionsFromFile(instructions, 'instructions.txt')    
 while (usedROB != 0) or (pc < len(instructions)):
     
     if(pc < len(instructions)):
